@@ -68,7 +68,6 @@ export default function App() {
     }
     // Match something like domain.com
     const pattern = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/;
-    // Strip HTTP/HTTPS protocol before verifying
     const host = val.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
     return pattern.test(host);
   };
@@ -98,7 +97,6 @@ export default function App() {
     setBlockingIssueId(null);
 
     // Reset temporary session fixes if we scan a different target
-    // But keep them if we scan the same one so it matches
     const isSameTarget = scanResult && (scanResult.target === targetUrl || (targetUrl === 'demo-target' && scanResult.target === 'demo-target'));
     if (!isSameTarget) {
       setFixedSuccess({});
@@ -166,7 +164,6 @@ export default function App() {
         currentLogIndex++;
       } else {
         clearInterval(interval);
-        // Call backend API to apply fix state
         fetch(`${API_BASE}/auto-fix`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -218,8 +215,6 @@ export default function App() {
 
   const handleOffboard = (empId) => {
     setOffboardingInProgress(empId);
-    
-    // Simulate multi-platform revocation
     setTimeout(() => {
       setOffboardedEmployees(prev => ({ ...prev, [empId]: true }));
       setOffboardingInProgress(null);
@@ -230,8 +225,6 @@ export default function App() {
   const getLiveScore = () => {
     if (!scanResult) return 100;
     let score = scanResult.score;
-    
-    // Check if we applied fixes/blocks in this session
     scanResult.issues.forEach(issue => {
       if (fixedSuccess[issue.id] || blockedSuccess[issue.id]) {
         if (issue.id === 'ssl_invalid') {
@@ -263,11 +256,11 @@ export default function App() {
     en: {
       appName: "SuRaksha AI",
       teamTag: "Team: Bheem Ki Shakti | SIH 2026",
-      subtitle: "Autonomous Cybersecurity Shield for SMBs",
-      desc: "Enter your website URL to identify security gaps. Our autonomous agent auto-fixes server configs, blocks exposure on critical issues, and guides you in plain English & Hindi.",
+      subtitle: "Approachable Cybersecurity for Small Businesses",
+      desc: "Scan your website to find security gaps. Our automated assistant applies safe configuration fixes, alerts you on risks, and guides you in plain English and Hindi.",
       placeholder: "Enter domain (e.g., example.com or demo-target)...",
       scanBtn: "Scan Now",
-      scanning: "Scanning Site Security...",
+      scanning: "Scanning Website Security...",
       quickDemo: "Try scanning sandbox targets:",
       resetDemo: "Reset Demo Environment",
       backBtn: "Start New Scan",
@@ -318,8 +311,8 @@ export default function App() {
     hi: {
       appName: "सुरक्षा AI",
       teamTag: "टीम: भीम की शक्ति | SIH 2026",
-      subtitle: "SMBs के लिए स्वायत्त साइबर सुरक्षा कवच",
-      desc: "सुरक्षा खामियों को पहचानने के लिए वेबसाइट URL दर्ज करें। हमारा स्वायत्त एजेंट सर्वर कॉन्फ़िगरेशन को ऑटो-फिक्स करता है, गंभीर खतरों को ब्लॉक करता है, और सरल हिंदी व अंग्रेजी में आपका मार्गदर्शन करता है।",
+      subtitle: "छोटे व्यवसायों के लिए सुलभ साइबर सुरक्षा",
+      desc: "सुरक्षा खामियों को पहचानने के लिए वेबसाइट URL दर्ज करें। हमारा स्वचालित सहायक सुरक्षित कॉन्फ़िगरेशन सुधार लागू करता है, जोखिमों के बारे में चेतावनी देता है, और सरल हिंदी व अंग्रेजी में आपका मार्गदर्शन करता है।",
       placeholder: "डोमेन दर्ज करें (जैसे, example.com या demo-target)...",
       scanBtn: "स्कैन करें",
       scanning: "वेबसाइट सुरक्षा स्कैन हो रही है...",
@@ -372,78 +365,56 @@ export default function App() {
     }
   }[lang];
 
-  // Helper colors for Score Circle
+  // Helper colors for Score Circle and Accents
   const getScoreColor = (score) => {
-    if (score >= 90) return 'var(--severity-secure)';
-    if (score >= 60) return 'var(--severity-medium)';
-    return 'var(--severity-critical)';
+    if (score >= 90) return '#059669'; // Green
+    if (score >= 60) return '#CA8A04'; // Yellow
+    return '#DC2626'; // Red
+  };
+
+  const getSeverityLeftBorder = (severity, isFixed, isBlocked) => {
+    if (isFixed || isBlocked) return '5px solid #059669';
+    switch (severity) {
+      case 'Critical': return '5px solid #DC2626';
+      case 'High': return '5px solid #EA580C';
+      case 'Medium': return '5px solid #CA8A04';
+      default: return '5px solid #2563EB';
+    }
   };
 
   const getSeverityBadgeStyle = (severity) => {
     switch (severity) {
       case 'Critical':
-        return {
-          background: 'var(--severity-critical-bg)',
-          color: 'var(--severity-critical)',
-          border: '1px solid var(--severity-critical-border)'
-        };
+        return { background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5' };
       case 'High':
-        return {
-          background: 'var(--severity-high-bg)',
-          color: 'var(--severity-high)',
-          border: '1px solid var(--severity-high-border)'
-        };
+        return { background: '#FFEDD5', color: '#EA580C', border: '1px solid #FED7AA' };
       case 'Medium':
-        return {
-          background: 'var(--severity-medium-bg)',
-          color: 'var(--severity-medium)',
-          border: '1px solid var(--severity-medium-border)'
-        };
+        return { background: '#FEF9C3', color: '#CA8A04', border: '1px solid #FEF08A' };
       default:
-        return {
-          background: 'var(--severity-low-bg)',
-          color: 'var(--severity-low)',
-          border: '1px solid var(--severity-low-border)'
-        };
+        return { background: '#DBEAFE', color: '#2563EB', border: '1px solid #BFDBFE' };
     }
   };
 
   const getActionBadgeStyle = (action, isFixed, isBlocked) => {
     if (isFixed) {
-      return {
-        background: 'var(--severity-secure-bg)',
-        color: 'var(--severity-secure)',
-        border: '1px solid var(--severity-secure-border)'
-      };
+      return { background: '#D1FAE5', color: '#059669', border: '1px solid #A7F3D0' };
     }
     if (isBlocked) {
-      return {
-        background: 'var(--severity-block-bg)',
-        color: '#f87171',
-        border: '1px solid var(--severity-block-border)'
-      };
+      return { background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5' };
     }
     if (action === 'AUTO_FIX') {
-      return {
-        background: 'var(--color-primary-glow)',
-        color: '#a5b4fc',
-        border: '1px solid rgba(99, 102, 241, 0.4)'
-      };
+      return { background: '#E0E7FF', color: '#4F46E5', border: '1px solid #C7D2FE' };
     }
     if (action === 'AUTO_BLOCK') {
-      return {
-        background: 'var(--severity-block-bg)',
-        color: '#fca5a5',
-        border: '1px solid var(--severity-block-border)',
-        boxShadow: '0 0 8px rgba(220, 38, 38, 0.3)',
-        animation: 'pulseBorder 2s infinite'
+      return { 
+        background: '#FEE2E2', 
+        color: '#B91C1C', 
+        border: '1px solid #FCA5A5',
+        boxShadow: '0 0 6px rgba(185, 28, 28, 0.25)',
+        animation: 'pulseBorder 2s infinite' 
       };
     }
-    return {
-      background: 'var(--severity-medium-bg)',
-      color: '#fde047',
-      border: '1px solid rgba(234, 179, 8, 0.4)'
-    };
+    return { background: '#FEF3C7', color: '#D97706', border: '1px solid #FCD34D' };
   };
 
   const isSandbox = (target) => {
@@ -455,9 +426,8 @@ export default function App() {
       {/* Global CSS Inject */}
       <style>{`
         .header-bar {
-          background: rgba(15, 23, 42, 0.85);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid var(--border-color);
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
           position: sticky;
           top: 0;
           z-index: 100;
@@ -476,23 +446,21 @@ export default function App() {
         .logo-text {
           font-size: 1.5rem;
           font-weight: 700;
-          background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #0f172a;
         }
         .logo-badge {
-          background: var(--color-primary-glow);
-          border: 1px solid rgba(99, 102, 241, 0.4);
-          color: #a5b4fc;
+          background: rgba(79, 70, 229, 0.08);
+          border: 1px solid rgba(79, 70, 229, 0.3);
+          color: #4f46e5;
           font-size: 0.7rem;
           padding: 0.15rem 0.4rem;
           border-radius: 4px;
           font-weight: 600;
         }
         .lang-btn {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--border-color);
-          color: var(--text-primary);
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          color: #0f172a;
           padding: 0.5rem 1rem;
           border-radius: 8px;
           display: flex;
@@ -500,11 +468,13 @@ export default function App() {
           gap: 0.5rem;
           font-weight: 500;
           font-size: 0.875rem;
+          transition: var(--transition-smooth);
         }
         .lang-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: var(--color-primary);
-          box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+          background: #f8fafc;
+          border-color: #4f46e5;
+          color: #4f46e5;
+          box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
         }
         
         /* Hero section styling */
@@ -519,12 +489,10 @@ export default function App() {
           font-weight: 800;
           line-height: 1.2;
           margin-bottom: 1.5rem;
-          background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: #0f172a;
         }
         .hero-subtitle {
-          color: var(--text-secondary);
+          color: #64748b;
           font-size: 1.125rem;
           line-height: 1.6;
           margin-bottom: 3rem;
@@ -538,26 +506,26 @@ export default function App() {
           display: flex;
           gap: 0.75rem;
           padding: 6px;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
           border-radius: 14px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
           transition: var(--transition-smooth);
         }
         .search-container:focus-within {
-          border-color: var(--color-primary);
-          box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.25);
+          border-color: #4f46e5;
+          box-shadow: 0 0 15px rgba(79, 70, 229, 0.15);
         }
         .search-input {
           flex: 1;
           background: transparent;
           border: none;
-          color: var(--text-primary);
+          color: #0f172a;
           font-size: 1rem;
           padding: 0.75rem 1rem;
         }
         .search-btn {
-          background: var(--color-primary);
+          background: #4f46e5;
           color: #ffffff;
           font-weight: 600;
           padding: 0 1.5rem;
@@ -568,8 +536,9 @@ export default function App() {
           font-size: 0.95rem;
         }
         .search-btn:hover {
-          background: #4f46e5;
+          background: #4338ca;
           transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
         }
         .search-btn:active {
           transform: translateY(0);
@@ -583,12 +552,12 @@ export default function App() {
           gap: 0.75rem;
           flex-wrap: wrap;
           font-size: 0.875rem;
-          color: var(--text-muted);
+          color: #64748b;
         }
         .demo-badge {
-          background: rgba(99, 102, 241, 0.08);
-          color: #a5b4fc;
-          border: 1px solid rgba(99, 102, 241, 0.25);
+          background: rgba(79, 70, 229, 0.05);
+          color: #4f46e5;
+          border: 1px solid rgba(79, 70, 229, 0.25);
           padding: 0.35rem 0.85rem;
           border-radius: 8px;
           cursor: pointer;
@@ -596,20 +565,19 @@ export default function App() {
           transition: var(--transition-smooth);
         }
         .demo-badge:hover {
-          background: rgba(99, 102, 241, 0.2);
-          border-color: var(--color-primary);
-          color: #ffffff;
-          box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+          background: rgba(79, 70, 229, 0.1);
+          border-color: #4f46e5;
+          color: #4338ca;
         }
         .reset-link {
-          color: var(--text-muted);
+          color: #64748b;
           text-decoration: underline;
           cursor: pointer;
           margin-left: 1rem;
           font-size: 0.85rem;
         }
         .reset-link:hover {
-          color: var(--severity-critical);
+          color: #dc2626;
         }
 
         /* Dashboard specific styles */
@@ -638,14 +606,14 @@ export default function App() {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
         .metric-label {
           font-size: 0.75rem;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          color: var(--text-muted);
+          color: var(--text-secondary);
         }
         .metric-val {
           font-size: 1.15rem;
@@ -664,7 +632,7 @@ export default function App() {
           align-items: center;
           text-align: center;
           height: fit-content;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
         }
         .score-svg-container {
           position: relative;
@@ -685,11 +653,12 @@ export default function App() {
           font-size: 3rem;
           font-weight: 800;
           line-height: 1;
+          color: #0f172a;
           font-family: var(--font-heading);
         }
         .score-label-pct {
           font-size: 0.75rem;
-          color: var(--text-muted);
+          color: var(--text-secondary);
           font-weight: 600;
           text-transform: uppercase;
         }
@@ -703,7 +672,7 @@ export default function App() {
         }
         .tab-btn {
           background: transparent;
-          color: var(--text-muted);
+          color: var(--text-secondary);
           padding: 0.75rem 0.25rem;
           font-weight: 600;
           font-size: 0.95rem;
@@ -731,7 +700,8 @@ export default function App() {
         .issue-card {
           padding: 1.25rem;
           cursor: pointer;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+          border-radius: 12px;
         }
         .issue-header {
           display: flex;
@@ -784,8 +754,8 @@ export default function App() {
           line-height: 1.6;
         }
         .ai-reasoning-card {
-          background: rgba(99, 102, 241, 0.04);
-          border: 1px solid rgba(99, 102, 241, 0.15);
+          background: rgba(79, 70, 229, 0.03);
+          border: 1px solid rgba(79, 70, 229, 0.12);
           border-radius: 8px;
           padding: 1rem;
         }
@@ -793,7 +763,7 @@ export default function App() {
           font-size: 0.8rem;
           font-weight: 700;
           text-transform: uppercase;
-          color: #818cf8;
+          color: #4F46E5;
           display: flex;
           align-items: center;
           gap: 0.35rem;
@@ -801,19 +771,19 @@ export default function App() {
         }
         .ai-reasoning-text {
           font-size: 0.9rem;
-          color: #c7d2fe;
+          color: #3730a3;
           line-height: 1.5;
         }
 
         /* Code snippets */
         .code-container {
-          background: #090d16;
-          border: 1px solid var(--border-color);
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
           border-radius: 8px;
           padding: 1rem;
           font-family: monospace;
           font-size: 0.85rem;
-          color: #38bdf8;
+          color: #0f172a;
           overflow-x: auto;
         }
 
@@ -828,21 +798,21 @@ export default function App() {
           gap: 0.5rem;
           align-self: flex-start;
           color: white;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .btn-trigger-fix {
-          background: var(--color-primary);
+          background: #4f46e5;
         }
         .btn-trigger-fix:hover {
-          background: #4f46e5;
-          box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+          background: #4338ca;
+          box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
         }
         .btn-trigger-block {
-          background: var(--severity-block);
+          background: #dc2626;
         }
         .btn-trigger-block:hover {
-          background: #dc2626;
-          box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+          background: #b91c1c;
+          box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
         }
         .btn-success-state {
           background: var(--severity-secure-bg);
@@ -854,7 +824,7 @@ export default function App() {
         /* Agent Terminal logs */
         .terminal-box {
           background: #020617;
-          border: 1px solid rgba(99, 102, 241, 0.3);
+          border: 1px solid rgba(79, 70, 229, 0.3);
           border-radius: 8px;
           padding: 1rem;
           font-family: 'Courier New', monospace;
@@ -903,8 +873,8 @@ export default function App() {
         .spinner {
           width: 70px;
           height: 70px;
-          border: 3px solid rgba(99, 102, 241, 0.1);
-          border-top-color: var(--color-primary);
+          border: 3px solid rgba(79, 70, 229, 0.1);
+          border-top-color: #4f46e5;
           border-radius: 50%;
         }
 
@@ -918,23 +888,23 @@ export default function App() {
           display: flex;
           align-items: center;
           gap: 0.75rem;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
         .banner-sandbox {
-          background: rgba(16, 185, 129, 0.08);
-          border: 1px solid rgba(16, 185, 129, 0.3);
-          color: #a7f3d0;
+          background: #d1fae5;
+          border: 1px solid #a7f3d0;
+          color: #065f46;
         }
         .banner-external {
-          background: rgba(99, 102, 241, 0.08);
-          border: 1px solid rgba(99, 102, 241, 0.3);
-          color: #c7d2fe;
+          background: #e0e7ff;
+          border: 1px solid #c7d2fe;
+          color: #3730a3;
         }
 
         /* Offboarding Mockup Card styling */
         .offboarding-panel {
           padding: 1.5rem;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
         }
         .offboarding-table {
           width: 100%;
@@ -947,24 +917,24 @@ export default function App() {
           border-bottom: 1px solid var(--border-color);
         }
         .offboarding-table th {
-          color: var(--text-muted);
+          color: var(--text-secondary);
           font-size: 0.75rem;
           text-transform: uppercase;
           font-weight: 600;
         }
         .revoked-tag {
-          color: var(--severity-critical);
-          background: var(--severity-critical-bg);
-          border: 1px solid var(--severity-critical-border);
+          color: #b91c1c;
+          background: #fee2e2;
+          border: 1px solid #fca5a5;
           padding: 0.2rem 0.55rem;
           border-radius: 6px;
           font-size: 0.75rem;
           font-weight: 600;
         }
         .active-tag {
-          color: var(--severity-secure);
-          background: var(--severity-secure-bg);
-          border: 1px solid var(--severity-secure-border);
+          color: #059669;
+          background: #d1fae5;
+          border: 1px solid #a7f3d0;
           padding: 0.2rem 0.55rem;
           border-radius: 6px;
           font-size: 0.75rem;
@@ -976,14 +946,14 @@ export default function App() {
       <header className="header-bar">
         <div className="container header-container">
           <div className="logo-section">
-            <Shield className="animate-pulse" style={{ color: 'var(--color-primary)' }} size={28} />
+            <Shield className="animate-pulse" style={{ color: '#4f46e5' }} size={28} />
             <div>
               <span className="logo-text">{t.appName}</span>
               <span className="logo-badge" style={{ marginLeft: '0.5rem' }}>BETA</span>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} className="hidden sm:inline">
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }} className="hidden sm:inline">
               {t.teamTag}
             </span>
             <button className="lang-btn" onClick={toggleLanguage}>
@@ -1027,7 +997,7 @@ export default function App() {
                 <span className="demo-badge" onClick={() => handleScan(null, 'demo-target')}>
                   demo-target (Vulnerable Headers)
                 </span>
-                <span className="demo-badge" style={{ borderColor: 'rgba(239, 68, 68, 0.45)', color: '#fca5a5' }} onClick={() => handleScan(null, 'demo-target-insecure')}>
+                <span className="demo-badge" style={{ borderColor: '#fca5a5', color: '#b91c1c', background: '#fee2e2' }} onClick={() => handleScan(null, 'demo-target-insecure')}>
                   demo-target-insecure (Missing SSL)
                 </span>
                 <span className="reset-link" onClick={handleResetDemo}>
@@ -1046,12 +1016,12 @@ export default function App() {
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    color: 'var(--color-primary)'
+                    color: '#4f46e5'
                   }} size={24} />
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <h3 style={{ marginBottom: '0.5rem' }}>{t.scanning}</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  <h3 style={{ marginBottom: '0.5rem', color: '#0f172a' }}>{t.scanning}</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                     Testing SSL certificate configurations and response security headers...
                   </p>
                 </div>
@@ -1064,16 +1034,16 @@ export default function App() {
                 maxWidth: '650px',
                 margin: '2rem auto 0 auto',
                 padding: '1.5rem',
-                borderColor: 'var(--severity-critical-border)',
-                background: 'rgba(239, 68, 68, 0.05)',
+                borderColor: '#fca5a5',
+                background: '#fee2e2',
                 display: 'flex',
                 gap: '1rem',
                 alignItems: 'center'
               }}>
-                <ShieldAlert style={{ color: 'var(--severity-critical)' }} size={32} />
+                <ShieldAlert style={{ color: '#dc2626' }} size={32} />
                 <div>
-                  <h4 style={{ color: 'var(--severity-critical)', marginBottom: '0.25rem' }}>Scan Message</h4>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{error}</p>
+                  <h4 style={{ color: '#b91c1c', marginBottom: '0.25rem', fontWeight: 700 }}>Scan Message</h4>
+                  <p style={{ color: '#7f1d1d', fontSize: '0.9rem' }}>{error}</p>
                 </div>
               </div>
             )}
@@ -1102,7 +1072,7 @@ export default function App() {
               </button>
               
               {isSandbox(scanResult.target) && (
-                <button className="lang-btn" style={{ borderColor: 'var(--severity-critical-border)' }} onClick={handleResetDemo}>
+                <button className="lang-btn" style={{ borderColor: '#fca5a5', color: '#dc2626' }} onClick={handleResetDemo}>
                   <RefreshCw size={14} />
                   <span>{t.resetDemo}</span>
                 </button>
@@ -1118,7 +1088,7 @@ export default function App() {
               <div className="glass-panel metric-card">
                 <span className="metric-label">{t.metricsSsl}</span>
                 <span className="metric-val" style={{ 
-                  color: (scanResult.ssl_info.valid || blockedSuccess['ssl_invalid']) ? 'var(--severity-secure)' : 'var(--severity-critical)',
+                  color: (scanResult.ssl_info.valid || blockedSuccess['ssl_invalid']) ? '#059669' : '#dc2626',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.25rem'
@@ -1129,13 +1099,13 @@ export default function App() {
               </div>
               <div className="glass-panel metric-card">
                 <span className="metric-label">{t.metricsIssues}</span>
-                <span className="metric-val" style={{ color: (scanResult.total_issues - resolvedCount) > 0 ? 'var(--severity-high)' : 'var(--severity-secure)' }}>
+                <span className="metric-val" style={{ color: (scanResult.total_issues - resolvedCount) > 0 ? '#ea580c' : '#059669' }}>
                   {scanResult.total_issues - resolvedCount}
                 </span>
               </div>
               <div className="glass-panel metric-card">
                 <span className="metric-label">{t.metricsFixed}</span>
-                <span className="metric-val" style={{ color: 'var(--severity-secure)' }}>
+                <span className="metric-val" style={{ color: '#4f46e5' }}>
                   {resolvedCount} / {scanResult.issues.filter(i => i.id !== 'server_version_disclosure').length}
                 </span>
               </div>
@@ -1155,7 +1125,7 @@ export default function App() {
                       cy="50"
                       r="42"
                       fill="transparent"
-                      stroke="rgba(255, 255, 255, 0.05)"
+                      stroke="#e2e8f0"
                       strokeWidth="8"
                     />
                     {/* Score arc indicator */}
@@ -1176,18 +1146,18 @@ export default function App() {
                   
                   {/* Inside Circle */}
                   <div className="score-text-inner">
-                    <span className="score-num" style={{ color: getScoreColor(liveScore) }}>{liveScore}</span>
+                    <span className="score-num" style={{ color: '#0f172a' }}>{liveScore}</span>
                     <span className="score-label-pct">Rating</span>
                   </div>
                 </div>
 
                 <div style={{ marginTop: '0.5rem' }}>
-                  <h4 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '0.25rem' }}>
+                  <h4 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '0.25rem', color: '#0f172a' }}>
                     {liveScore >= 90 ? (lang === 'en' ? 'Excellent' : 'अति उत्तम') :
                      liveScore >= 60 ? (lang === 'en' ? 'Medium Risk' : 'मध्यम जोखिम') :
                      (lang === 'en' ? 'Critical Risk' : 'गंभीर जोखिम')}
                   </h4>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                     {lang === 'en' 
                       ? 'Continuous security reinforcement advised.' 
                       : 'सतत सुरक्षा सुदृढ़ीकरण की सलाह दी जाती है।'}
@@ -1195,12 +1165,12 @@ export default function App() {
                   
                   {/* Access Restricted Tag for Insecure target + Block success */}
                   {scanResult.target === 'demo-target-insecure' && !blockedSuccess['ssl_invalid'] && (
-                    <div className="badge-common" style={{ background: 'var(--severity-critical-bg)', color: 'var(--severity-critical)', border: '1px solid var(--severity-critical-border)', marginTop: '1.25rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                    <div className="badge-common" style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', marginTop: '1.25rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                       ⚠️ {lang === 'en' ? 'Exposed Traffic' : 'ट्रैफ़िक खुला है'}
                     </div>
                   )}
                   {blockedSuccess['ssl_invalid'] && (
-                    <div className="badge-common" style={{ background: 'var(--severity-block-bg)', color: '#f87171', border: '1px solid var(--severity-block-border)', marginTop: '1.25rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem', animation: 'pulseBorder 2.5s infinite' }}>
+                    <div className="badge-common" style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', marginTop: '1.25rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem', animation: 'pulseBorder 2.5s infinite' }}>
                       🛑 {lang === 'en' ? 'Access Restricted' : 'एक्सेस प्रतिबंधित है'}
                     </div>
                   )}
@@ -1231,9 +1201,9 @@ export default function App() {
                     {scanResult.total_issues === 0 ? (
                       /* Zero issues fallback state */
                       <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-                        <CheckCircle2 style={{ color: 'var(--severity-secure)', margin: '0 auto 1rem auto' }} size={48} />
+                        <CheckCircle2 style={{ color: '#059669', margin: '0 auto 1rem auto' }} size={48} />
                         <h4 style={{ marginBottom: '0.5rem' }}>{t.noIssues}</h4>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                           This host is secured against initial web server exposure vectors.
                         </p>
                       </div>
@@ -1246,25 +1216,26 @@ export default function App() {
                         return (
                           <div 
                             key={issue.id} 
-                            className="glass-panel issue-card"
+                            className="glass-panel issue-card animate-fade-in"
                             style={{
-                              borderColor: isFixed || isBlocked ? 'var(--severity-secure-border)' : 'rgba(255, 255, 255, 0.08)'
+                              borderLeft: getLiveScore() ? getSeverityLeftBorder(issue.severity, isFixed, isBlocked) : '1px solid var(--border-color)',
+                              borderColor: isFixed || isBlocked ? '#a7f3d0' : 'var(--border-color)'
                             }}
                           >
                             <div className="issue-header" onClick={() => toggleExpandIssue(issue.id)}>
                               <div className="issue-title-group">
                                 {isFixed || isBlocked ? (
-                                  <ShieldCheck style={{ color: 'var(--severity-secure)' }} size={20} />
+                                  <ShieldCheck style={{ color: '#059669' }} size={20} />
                                 ) : (
                                   <AlertTriangle style={{ 
-                                    color: issue.severity === 'Critical' ? 'var(--severity-critical)' : 
-                                           issue.severity === 'High' ? 'var(--severity-high)' : 
-                                           'var(--severity-medium)' 
+                                    color: issue.severity === 'Critical' ? '#dc2626' : 
+                                           issue.severity === 'High' ? '#ea580c' : 
+                                           '#ca8a04' 
                                   }} size={20} />
                                 )}
                                 <div>
                                   <h4 style={{ 
-                                    color: (isFixed || isBlocked) ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                    color: '#0f172a',
                                     fontSize: '0.95rem',
                                     fontWeight: 600
                                   }}>
@@ -1311,7 +1282,7 @@ export default function App() {
                                   )}
                                 </span>
                                 
-                                {isExpanded ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+                                {isExpanded ? <ChevronUp size={16} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-secondary)' }} />}
                               </div>
                             </div>
 
@@ -1332,7 +1303,7 @@ export default function App() {
 
                                 {/* Blocked Confirmation Line */}
                                 {isBlocked && (
-                                  <div className="badge-common animate-fade-in" style={{ background: 'var(--severity-block-bg)', color: '#fca5a5', border: '1px solid var(--severity-block-border)', width: '100%', borderRadius: '8px', padding: '0.5rem 1rem' }}>
+                                  <div className="badge-common animate-fade-in" style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', width: '100%', borderRadius: '8px', padding: '0.5rem 1rem' }}>
                                     <ShieldCheck size={16} />
                                     <span>{t.blockSuccess}</span>
                                   </div>
@@ -1351,7 +1322,7 @@ export default function App() {
 
                                 {/* Manual Remediation steps */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                                     {t.remediationSteps}
                                   </span>
                                   <div className="code-container">
@@ -1433,8 +1404,8 @@ export default function App() {
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
                       <UserX size={32} style={{ color: 'var(--color-primary)' }} />
                       <div>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>{t.offboardTitle}</h3>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.offboardSubtitle}</p>
+                        <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem', color: '#0f172a' }}>{t.offboardTitle}</h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t.offboardSubtitle}</p>
                       </div>
                     </div>
 
@@ -1460,7 +1431,7 @@ export default function App() {
                           
                           return (
                             <tr key={emp.id}>
-                              <td style={{ fontWeight: 600 }}>{emp.name}</td>
+                              <td style={{ fontWeight: 600, color: '#0f172a' }}>{emp.name}</td>
                               <td style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{emp.role}</td>
                               <td>
                                 <span className={isRevoked ? "revoked-tag" : "active-tag"}>
@@ -1479,7 +1450,7 @@ export default function App() {
                               </td>
                               <td>
                                 {isRevoked ? (
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
                                     {t.offboarded}
                                   </span>
                                 ) : (
@@ -1488,9 +1459,9 @@ export default function App() {
                                     style={{ 
                                       padding: '0.35rem 0.75rem', 
                                       fontSize: '0.8rem',
-                                      borderColor: 'rgba(239, 68, 68, 0.4)',
-                                      color: '#f87171',
-                                      background: 'rgba(239, 68, 68, 0.05)'
+                                      borderColor: 'rgba(220, 38, 38, 0.4)',
+                                      color: '#dc2626',
+                                      background: '#fee2e2'
                                     }}
                                     disabled={isWorking}
                                     onClick={() => handleOffboard(emp.id)}
@@ -1505,7 +1476,7 @@ export default function App() {
                       </tbody>
                     </table>
 
-                    <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
                       <Info size={18} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
                       <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                         <strong>Pitch Deck Demonstration Node:</strong> Active integrations will invoke corporate API hooks to remove tokens, revoke GitHub access, and shut down SSH keys instantly. Device checking client installers can also be pushed to restrict devices from network structures.
@@ -1524,10 +1495,11 @@ export default function App() {
         marginTop: 'auto', 
         padding: '2rem 0', 
         borderTop: '1px solid var(--border-color)',
-        background: 'rgba(15, 23, 42, 0.9)',
+        background: '#ffffff',
         textAlign: 'center',
         fontSize: '0.825rem',
-        color: 'var(--text-muted)'
+        color: 'var(--text-secondary)',
+        boxShadow: '0 -1px 3px rgba(0,0,0,0.02)'
       }}>
         <div className="container">
           <p>© 2026 SuRaksha AI. Developed for Smart India Hackathon 2026.</p>
