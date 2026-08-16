@@ -973,9 +973,6 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }} className="hidden sm:inline">
-              {t.teamTag}
-            </span>
             <button className="lang-btn" onClick={toggleLanguage}>
               <Languages size={16} />
               <span>{lang === 'en' ? 'हिन्दी (HI)' : 'English (EN)'}</span>
