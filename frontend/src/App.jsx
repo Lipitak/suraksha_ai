@@ -21,7 +21,8 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
-  Info
+  Info,
+  Check
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5005/api';
@@ -58,10 +59,35 @@ export default function App() {
     setLang(prev => (prev === 'en' ? 'hi' : 'en'));
   };
 
+  // Basic domain name check to prevent crashing on invalid text input
+  const validateDomain = (domain) => {
+    const val = domain.trim().toLowerCase();
+    if (!val) return false;
+    if (val.includes('demo-target') || val.includes('localhost') || val.includes('127.0.0.1')) {
+      return true;
+    }
+    // Match something like domain.com
+    const pattern = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/;
+    // Strip HTTP/HTTPS protocol before verifying
+    const host = val.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    return pattern.test(host);
+  };
+
   const handleScan = async (e, urlToScan = null) => {
     if (e) e.preventDefault();
     const targetUrl = urlToScan || urlInput;
+    
     if (!targetUrl.trim()) return;
+
+    // Run input validation
+    if (!validateDomain(targetUrl)) {
+      setError(lang === 'en' 
+        ? "We couldn't reach this website. Please check the URL and try again." 
+        : "हम इस वेबसाइट तक नहीं पहुँच सके। कृपया यूआरएल जांचें और पुनः प्रयास करें।"
+      );
+      setScanResult(null);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -70,6 +96,14 @@ export default function App() {
     setTerminalLogs([]);
     setFixingIssueId(null);
     setBlockingIssueId(null);
+
+    // Reset temporary session fixes if we scan a different target
+    // But keep them if we scan the same one so it matches
+    const isSameTarget = scanResult && (scanResult.target === targetUrl || (targetUrl === 'demo-target' && scanResult.target === 'demo-target'));
+    if (!isSameTarget) {
+      setFixedSuccess({});
+      setBlockedSuccess({});
+    }
 
     try {
       const response = await fetch(`${API_BASE}/scan`, {
@@ -102,8 +136,8 @@ export default function App() {
       await fetch(`${API_BASE}/reset`, { method: 'POST' });
       setFixedSuccess({});
       setBlockedSuccess({});
-      if (scanResult && scanResult.target === 'demo-target') {
-        handleScan(null, 'demo-target');
+      if (scanResult && (scanResult.target === 'demo-target' || scanResult.target === 'demo-target-insecure')) {
+        handleScan(null, scanResult.target);
       }
     } catch (err) {
       console.error('Reset failed:', err);
@@ -142,15 +176,13 @@ export default function App() {
         .then(data => {
           setFixedSuccess(prev => ({ ...prev, [issueId]: true }));
           setFixingIssueId(null);
-          // Auto-trigger a re-scan of the demo-target to show updated score live!
-          handleScan(null, 'demo-target');
         })
         .catch(err => {
           console.error(err);
           setFixingIssueId(null);
         });
       }
-    }, 300);
+    }, 200);
   };
 
   const runAutoBlock = (issueId) => {
@@ -177,7 +209,7 @@ export default function App() {
         setBlockedSuccess(prev => ({ ...prev, [issueId]: true }));
         setBlockingIssueId(null);
       }
-    }, 300);
+    }, 200);
   };
 
   const toggleExpandIssue = (id) => {
@@ -194,6 +226,38 @@ export default function App() {
     }, 1500);
   };
 
+  // Recalculate score live based on fixed/blocked successes
+  const getLiveScore = () => {
+    if (!scanResult) return 100;
+    let score = scanResult.score;
+    
+    // Check if we applied fixes/blocks in this session
+    scanResult.issues.forEach(issue => {
+      if (fixedSuccess[issue.id] || blockedSuccess[issue.id]) {
+        if (issue.id === 'ssl_invalid') {
+          score += 35;
+        } else if (issue.id === 'header_hsts_missing') {
+          score += 20;
+        } else if (issue.id === 'header_csp_missing') {
+          score += 20;
+        } else if (issue.id === 'header_xframe_missing') {
+          score += 15;
+        } else if (issue.id === 'header_xcontent_missing') {
+          score += 10;
+        }
+      }
+    });
+    return Math.min(100, score);
+  };
+
+  const getResolvedCount = () => {
+    if (!scanResult) return 0;
+    return scanResult.issues.filter(issue => fixedSuccess[issue.id] || blockedSuccess[issue.id]).length;
+  };
+
+  const liveScore = getLiveScore();
+  const resolvedCount = getResolvedCount();
+
   // Translations
   const t = {
     en: {
@@ -204,14 +268,14 @@ export default function App() {
       placeholder: "Enter domain (e.g., example.com or demo-target)...",
       scanBtn: "Scan Now",
       scanning: "Scanning Site Security...",
-      quickDemo: "Try scanning sandbox target:",
+      quickDemo: "Try scanning sandbox targets:",
       resetDemo: "Reset Demo Environment",
       backBtn: "Start New Scan",
       scoreTitle: "Security Rating",
       metricsTarget: "Target Domain",
       metricsSsl: "SSL Certificate",
       metricsIssues: "Vulnerabilities Found",
-      metricsFixed: "Auto-Fixes Available",
+      metricsFixed: "Issues Fixed",
       tabVulnerabilities: "Vulnerabilities & AI Actions",
       tabOffboarding: "1-Click Staff Offboarding (Demo)",
       severityCritical: "Critical",
@@ -225,10 +289,10 @@ export default function App() {
       remediationSteps: "Manual Fix Steps",
       fixBtn: "Fix Automatically",
       blockBtn: "Block Exposure",
-      fixSuccess: "Vulnerability Secured!",
-      blockSuccess: "Threat Blocked!",
-      fixing: "Agent working...",
-      blocking: "Shielding site...",
+      fixSuccess: "Patched successfully — header added to server configuration.",
+      blockSuccess: "Exposure restricted successfully — traffic shielded via agent firewall.",
+      fixing: "Fixing...",
+      blocking: "Shielding...",
       noIssues: "Perfect Score! No security weaknesses detected.",
       offboardTitle: "Employee Offboarding Console",
       offboardSubtitle: "Revoke all corporate credentials and network access in 1-click (Pitch Deck Prototype)",
@@ -247,7 +311,9 @@ export default function App() {
       sslDays: "Days left",
       secInfo: "Secure",
       vulnInfo: "Vulnerable",
-      agentShell: "Agent Execution Console"
+      agentShell: "Agent Execution Console",
+      sandboxBanner: "✅ This is your verified sandbox environment — Auto-Fix is enabled here.",
+      externalBanner: "🔒 This is an external site — showing safe guidance only. In production, verifying domain ownership (via DNS record or file upload) would unlock Auto-Fix for this domain."
     },
     hi: {
       appName: "सुरक्षा AI",
@@ -257,14 +323,14 @@ export default function App() {
       placeholder: "डोमेन दर्ज करें (जैसे, example.com या demo-target)...",
       scanBtn: "स्कैन करें",
       scanning: "वेबसाइट सुरक्षा स्कैन हो रही है...",
-      quickDemo: "सैंडबॉक्स लक्ष्य को स्कैन करके देखें:",
+      quickDemo: "सैंडबॉक्स लक्ष्यों को स्कैन करके देखें:",
       resetDemo: "डेमो एनवायरनमेंट रीसेट करें",
       backBtn: "नया स्कैन करें",
       scoreTitle: "सुरक्षा रेटिंग",
       metricsTarget: "लक्षित डोमेन",
       metricsSsl: "SSL सर्टिफिकेट",
       metricsIssues: "खामियां पाई गईं",
-      metricsFixed: "ऑटो-फिक्स उपलब्ध",
+      metricsFixed: "सुधारे गए मुद्दे",
       tabVulnerabilities: "कमजोरियां और एआई एक्शन",
       tabOffboarding: "1-क्लिक स्टाफ ऑफबोर्डिंग (डेमो)",
       severityCritical: "अति गंभीर (Critical)",
@@ -278,13 +344,13 @@ export default function App() {
       remediationSteps: "सुधारने के मैन्युअल चरण",
       fixBtn: "स्वचालित ठीक करें",
       blockBtn: "खतरे को ब्लॉक करें",
-      fixSuccess: "कमजोरी सुरक्षित हो गई!",
-      blockSuccess: "खतरा ब्लॉक कर दिया गया!",
-      fixing: "एजेंट काम कर रहा है...",
-      blocking: "वेबसाइट को शील्ड कर रहा है...",
+      fixSuccess: "सफलतापूर्वक ठीक हो गया — सर्वर कॉन्फ़िगरेशन में सुरक्षा हेडर जोड़ दिया गया है।",
+      blockSuccess: "एक्सेस सफलतापूर्वक प्रतिबंधित कर दिया गया — ट्रैफ़िक को शील्ड के माध्यम से सुरक्षित किया गया है।",
+      fixing: "ठीक हो रहा है...",
+      blocking: "शील्ड हो रहा है...",
       noIssues: "उत्कृष्ट स्कोर! कोई सुरक्षा खामी नहीं मिली।",
       offboardTitle: "कर्मचारी ऑफबोर्डिंग कंसोल",
-      offboardSubtitle: "1-क्लिक में सभी कॉर्पोरेट क्रेडेंशियल और नेटवर्क एक्सेस रद्द करें (पिच डेक प्रोटोटाइप)",
+      offboardSubtitle: "1-क्लिक में सभी क्रेडेंशियल और नेटवर्क एक्सेस रद्द करें (पिच डेक प्रोटोटाइप)",
       empName: "कर्मचारी",
       empRole: "भूमिका",
       empGg: "गूगल वर्कस्पेस",
@@ -300,7 +366,9 @@ export default function App() {
       sslDays: "शेष दिन",
       secInfo: "सुरक्षित",
       vulnInfo: "असुरक्षित",
-      agentShell: "एजेंट निष्पादन कंसोल"
+      agentShell: "एजेंट निष्पादन कंसोल",
+      sandboxBanner: "✅ यह आपका सत्यापित सैंडबॉक्स वातावरण है — यहाँ ऑटो-फिक्स सक्षम है।",
+      externalBanner: "🔒 यह एक बाहरी साइट है — केवल सुरक्षित मार्गदर्शन दिखाया जा रहा है। प्रोडक्शन में, डोमेन स्वामित्व की पुष्टि (DNS रिकॉर्ड या फ़ाइल अपलोड द्वारा) करने से इस डोमेन के लिए ऑटो-फिक्स अनलॉक हो जाएगा।"
     }
   }[lang];
 
@@ -311,23 +379,75 @@ export default function App() {
     return 'var(--severity-critical)';
   };
 
-  const getSeverityBadgeClass = (severity) => {
+  const getSeverityBadgeStyle = (severity) => {
     switch (severity) {
       case 'Critical':
-        return 'severity-badge-critical';
+        return {
+          background: 'var(--severity-critical-bg)',
+          color: 'var(--severity-critical)',
+          border: '1px solid var(--severity-critical-border)'
+        };
       case 'High':
-        return 'severity-badge-high';
+        return {
+          background: 'var(--severity-high-bg)',
+          color: 'var(--severity-high)',
+          border: '1px solid var(--severity-high-border)'
+        };
       case 'Medium':
-        return 'severity-badge-medium';
+        return {
+          background: 'var(--severity-medium-bg)',
+          color: 'var(--severity-medium)',
+          border: '1px solid var(--severity-medium-border)'
+        };
       default:
-        return 'severity-badge-low';
+        return {
+          background: 'var(--severity-low-bg)',
+          color: 'var(--severity-low)',
+          border: '1px solid var(--severity-low-border)'
+        };
     }
   };
 
-  const getActionBadgeClass = (action) => {
-    if (action === 'AUTO_FIX') return 'action-badge-fix';
-    if (action === 'AUTO_BLOCK') return 'action-badge-block';
-    return 'action-badge-guide';
+  const getActionBadgeStyle = (action, isFixed, isBlocked) => {
+    if (isFixed) {
+      return {
+        background: 'var(--severity-secure-bg)',
+        color: 'var(--severity-secure)',
+        border: '1px solid var(--severity-secure-border)'
+      };
+    }
+    if (isBlocked) {
+      return {
+        background: 'var(--severity-block-bg)',
+        color: '#f87171',
+        border: '1px solid var(--severity-block-border)'
+      };
+    }
+    if (action === 'AUTO_FIX') {
+      return {
+        background: 'var(--color-primary-glow)',
+        color: '#a5b4fc',
+        border: '1px solid rgba(99, 102, 241, 0.4)'
+      };
+    }
+    if (action === 'AUTO_BLOCK') {
+      return {
+        background: 'var(--severity-block-bg)',
+        color: '#fca5a5',
+        border: '1px solid var(--severity-block-border)',
+        boxShadow: '0 0 8px rgba(220, 38, 38, 0.3)',
+        animation: 'pulseBorder 2s infinite'
+      };
+    }
+    return {
+      background: 'var(--severity-medium-bg)',
+      color: '#fde047',
+      border: '1px solid rgba(234, 179, 8, 0.4)'
+    };
+  };
+
+  const isSandbox = (target) => {
+    return target && (target.includes('demo-target') || target.includes('localhost') || target.includes('127.0.0.1'));
   };
 
   return (
@@ -335,7 +455,7 @@ export default function App() {
       {/* Global CSS Inject */}
       <style>{`
         .header-bar {
-          background: rgba(15, 22, 38, 0.8);
+          background: rgba(15, 23, 42, 0.85);
           backdrop-filter: blur(12px);
           border-bottom: 1px solid var(--border-color);
           position: sticky;
@@ -356,7 +476,7 @@ export default function App() {
         .logo-text {
           font-size: 1.5rem;
           font-weight: 700;
-          background: linear-gradient(135deg, #f8fafc 0%, #a5b4fc 100%);
+          background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -383,7 +503,8 @@ export default function App() {
         }
         .lang-btn:hover {
           background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.2);
+          border-color: var(--color-primary);
+          box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
         }
         
         /* Hero section styling */
@@ -413,19 +534,19 @@ export default function App() {
         .search-container {
           position: relative;
           max-width: 650px;
-          margin: 0 auto 3rem auto;
+          margin: 0 auto 2rem auto;
           display: flex;
           gap: 0.75rem;
           padding: 6px;
-          background: rgba(17, 24, 39, 0.6);
-          border: 1px solid var(--border-color);
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 14px;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
           transition: var(--transition-smooth);
         }
         .search-container:focus-within {
           border-color: var(--color-primary);
-          box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.15);
+          box-shadow: 0 0 20px 0 rgba(99, 102, 241, 0.25);
         }
         .search-input {
           flex: 1;
@@ -437,7 +558,6 @@ export default function App() {
         }
         .search-btn {
           background: var(--color-primary);
-          color: #white;
           color: #ffffff;
           font-weight: 600;
           padding: 0 1.5rem;
@@ -460,17 +580,17 @@ export default function App() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem;
+          gap: 0.75rem;
           flex-wrap: wrap;
           font-size: 0.875rem;
           color: var(--text-muted);
         }
         .demo-badge {
-          background: rgba(99, 102, 241, 0.1);
+          background: rgba(99, 102, 241, 0.08);
           color: #a5b4fc;
-          border: 1px solid rgba(99, 102, 241, 0.2);
-          padding: 0.25rem 0.75rem;
-          border-radius: 6px;
+          border: 1px solid rgba(99, 102, 241, 0.25);
+          padding: 0.35rem 0.85rem;
+          border-radius: 8px;
           cursor: pointer;
           font-weight: 500;
           transition: var(--transition-smooth);
@@ -479,12 +599,14 @@ export default function App() {
           background: rgba(99, 102, 241, 0.2);
           border-color: var(--color-primary);
           color: #ffffff;
+          box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
         }
         .reset-link {
           color: var(--text-muted);
           text-decoration: underline;
           cursor: pointer;
           margin-left: 1rem;
+          font-size: 0.85rem;
         }
         .reset-link:hover {
           color: var(--severity-critical);
@@ -508,7 +630,7 @@ export default function App() {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1rem;
-          margin-bottom: 2rem;
+          margin-bottom: 1.5rem;
         }
         .metric-card {
           padding: 1.25rem;
@@ -516,6 +638,7 @@ export default function App() {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
         }
         .metric-label {
           font-size: 0.75rem;
@@ -541,6 +664,7 @@ export default function App() {
           align-items: center;
           text-align: center;
           height: fit-content;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
         .score-svg-container {
           position: relative;
@@ -605,8 +729,9 @@ export default function App() {
           gap: 1rem;
         }
         .issue-card {
-          padding: 1rem;
+          padding: 1.25rem;
           cursor: pointer;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .issue-header {
           display: flex;
@@ -633,7 +758,7 @@ export default function App() {
         
         /* Badges */
         .badge-common {
-          padding: 0.25rem 0.6rem;
+          padding: 0.3rem 0.65rem;
           border-radius: 6px;
           font-size: 0.75rem;
           font-weight: 600;
@@ -641,42 +766,7 @@ export default function App() {
           display: inline-flex;
           align-items: center;
           gap: 0.25rem;
-        }
-        .severity-badge-critical {
-          background: var(--severity-critical-bg);
-          color: var(--severity-critical);
-          border: 1px solid var(--severity-critical-border);
-        }
-        .severity-badge-high {
-          background: var(--severity-high-bg);
-          color: var(--severity-high);
-          border: 1px solid var(--severity-high-border);
-        }
-        .severity-badge-medium {
-          background: var(--severity-medium-bg);
-          color: var(--severity-medium);
-          border: 1px solid var(--severity-medium-border);
-        }
-        .severity-badge-low {
-          background: var(--severity-low-bg);
-          color: var(--severity-low);
-          border: 1px solid var(--severity-low-border);
-        }
-        
-        .action-badge-fix {
-          background: var(--color-primary-glow);
-          color: #a5b4fc;
-          border: 1px solid rgba(99, 102, 241, 0.3);
-        }
-        .action-badge-block {
-          background: var(--severity-critical-bg);
-          color: #f87171;
-          border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        .action-badge-guide {
-          background: var(--severity-medium-bg);
-          color: #fde047;
-          border: 1px solid rgba(234, 179, 8, 0.3);
+          transition: var(--transition-smooth);
         }
 
         /* Issue Expanded View */
@@ -737,25 +827,28 @@ export default function App() {
           align-items: center;
           gap: 0.5rem;
           align-self: flex-start;
+          color: white;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.25);
         }
         .btn-trigger-fix {
           background: var(--color-primary);
-          color: white;
         }
         .btn-trigger-fix:hover {
           background: #4f46e5;
+          box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
         }
         .btn-trigger-block {
-          background: var(--severity-critical);
-          color: white;
+          background: var(--severity-block);
         }
         .btn-trigger-block:hover {
           background: #dc2626;
+          box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
         }
         .btn-success-state {
           background: var(--severity-secure-bg);
           color: var(--severity-secure);
           border: 1px solid var(--severity-secure-border);
+          padding: 0.5rem 1rem;
         }
 
         /* Agent Terminal logs */
@@ -815,9 +908,33 @@ export default function App() {
           border-radius: 50%;
         }
 
+        /* Context Banners */
+        .context-banner {
+          padding: 1rem;
+          border-radius: 12px;
+          margin-bottom: 1.5rem;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .banner-sandbox {
+          background: rgba(16, 185, 129, 0.08);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          color: #a7f3d0;
+        }
+        .banner-external {
+          background: rgba(99, 102, 241, 0.08);
+          border: 1px solid rgba(99, 102, 241, 0.3);
+          color: #c7d2fe;
+        }
+
         /* Offboarding Mockup Card styling */
         .offboarding-panel {
           padding: 1.5rem;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         .offboarding-table {
           width: 100%;
@@ -839,19 +956,19 @@ export default function App() {
           color: var(--severity-critical);
           background: var(--severity-critical-bg);
           border: 1px solid var(--severity-critical-border);
-          padding: 0.15rem 0.5rem;
-          border-radius: 4px;
+          padding: 0.2rem 0.55rem;
+          border-radius: 6px;
           font-size: 0.75rem;
-          font-weight: 500;
+          font-weight: 600;
         }
         .active-tag {
           color: var(--severity-secure);
           background: var(--severity-secure-bg);
           border: 1px solid var(--severity-secure-border);
-          padding: 0.15rem 0.5rem;
-          border-radius: 4px;
+          padding: 0.2rem 0.55rem;
+          border-radius: 6px;
           font-size: 0.75rem;
-          font-weight: 500;
+          font-weight: 600;
         }
       `}</style>
 
@@ -878,7 +995,7 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main style={{ flex: 1 }} className="container">
+      <main style={{ flex: 1, padding: '2rem 0' }} className="container">
         {!scanResult ? (
           /* Landing Page Search Box */
           <div className="animate-fade-in">
@@ -904,11 +1021,14 @@ export default function App() {
                 </div>
               </form>
 
-              {/* Sandbox quick button */}
+              {/* Sandbox quick buttons */}
               <div className="demo-bar">
                 <span>{t.quickDemo}</span>
                 <span className="demo-badge" onClick={() => handleScan(null, 'demo-target')}>
-                  demo-target (Local Sandbox)
+                  demo-target (Vulnerable Headers)
+                </span>
+                <span className="demo-badge" style={{ borderColor: 'rgba(239, 68, 68, 0.45)', color: '#fca5a5' }} onClick={() => handleScan(null, 'demo-target-insecure')}>
+                  demo-target-insecure (Missing SSL)
                 </span>
                 <span className="reset-link" onClick={handleResetDemo}>
                   {t.resetDemo}
@@ -942,7 +1062,7 @@ export default function App() {
               /* Error display */
               <div className="glass-panel" style={{
                 maxWidth: '650px',
-                margin: '0 auto',
+                margin: '2rem auto 0 auto',
                 padding: '1.5rem',
                 borderColor: 'var(--severity-critical-border)',
                 background: 'rgba(239, 68, 68, 0.05)',
@@ -952,7 +1072,7 @@ export default function App() {
               }}>
                 <ShieldAlert style={{ color: 'var(--severity-critical)' }} size={32} />
                 <div>
-                  <h4 style={{ color: 'var(--severity-critical)', marginBottom: '0.25rem' }}>Scan Error</h4>
+                  <h4 style={{ color: 'var(--severity-critical)', marginBottom: '0.25rem' }}>Scan Message</h4>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{error}</p>
                 </div>
               </div>
@@ -960,7 +1080,20 @@ export default function App() {
           </div>
         ) : (
           /* Dashboard Results Page */
-          <div className="animate-fade-in" style={{ padding: '2rem 0' }}>
+          <div className="animate-fade-in">
+            {/* Context Authorization banner */}
+            {isSandbox(scanResult.target) ? (
+              <div className="context-banner banner-sandbox animate-fade-in">
+                <ShieldCheck size={18} />
+                <span>{t.sandboxBanner}</span>
+              </div>
+            ) : (
+              <div className="context-banner banner-external animate-fade-in">
+                <Lock size={18} />
+                <span>{t.externalBanner}</span>
+              </div>
+            )}
+
             {/* Top Toolbar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <button className="lang-btn" onClick={() => setScanResult(null)}>
@@ -968,7 +1101,7 @@ export default function App() {
                 <span>{t.backBtn}</span>
               </button>
               
-              {scanResult.target === 'demo-target' && (
+              {isSandbox(scanResult.target) && (
                 <button className="lang-btn" style={{ borderColor: 'var(--severity-critical-border)' }} onClick={handleResetDemo}>
                   <RefreshCw size={14} />
                   <span>{t.resetDemo}</span>
@@ -985,25 +1118,25 @@ export default function App() {
               <div className="glass-panel metric-card">
                 <span className="metric-label">{t.metricsSsl}</span>
                 <span className="metric-val" style={{ 
-                  color: scanResult.ssl_info.valid ? 'var(--severity-secure)' : 'var(--severity-critical)',
+                  color: (scanResult.ssl_info.valid || blockedSuccess['ssl_invalid']) ? 'var(--severity-secure)' : 'var(--severity-critical)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.25rem'
                 }}>
-                  {scanResult.ssl_info.valid ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
-                  {scanResult.ssl_info.valid ? t.secInfo : t.vulnInfo}
+                  { (scanResult.ssl_info.valid || blockedSuccess['ssl_invalid']) ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+                  { (scanResult.ssl_info.valid || blockedSuccess['ssl_invalid']) ? t.secInfo : t.vulnInfo}
                 </span>
               </div>
               <div className="glass-panel metric-card">
                 <span className="metric-label">{t.metricsIssues}</span>
-                <span className="metric-val" style={{ color: scanResult.total_issues > 0 ? 'var(--severity-high)' : 'var(--severity-secure)' }}>
-                  {scanResult.total_issues}
+                <span className="metric-val" style={{ color: (scanResult.total_issues - resolvedCount) > 0 ? 'var(--severity-high)' : 'var(--severity-secure)' }}>
+                  {scanResult.total_issues - resolvedCount}
                 </span>
               </div>
               <div className="glass-panel metric-card">
                 <span className="metric-label">{t.metricsFixed}</span>
-                <span className="metric-val" style={{ color: 'var(--color-primary)' }}>
-                  {scanResult.issues.filter(i => i.auto_fixable).length}
+                <span className="metric-val" style={{ color: 'var(--severity-secure)' }}>
+                  {resolvedCount} / {scanResult.issues.filter(i => i.id !== 'server_version_disclosure').length}
                 </span>
               </div>
             </div>
@@ -1031,10 +1164,10 @@ export default function App() {
                       cy="50"
                       r="42"
                       fill="transparent"
-                      stroke={getScoreColor(scanResult.score)}
+                      stroke={getScoreColor(liveScore)}
                       strokeWidth="8"
                       strokeDasharray={`${2 * Math.PI * 42}`}
-                      strokeDashoffset={`${2 * Math.PI * 42 * (1 - scanResult.score / 100)}`}
+                      strokeDashoffset={`${2 * Math.PI * 42 * (1 - liveScore / 100)}`}
                       strokeLinecap="round"
                       transform="rotate(-90 50 50)"
                       style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
@@ -1043,15 +1176,15 @@ export default function App() {
                   
                   {/* Inside Circle */}
                   <div className="score-text-inner">
-                    <span className="score-num" style={{ color: getScoreColor(scanResult.score) }}>{scanResult.score}</span>
+                    <span className="score-num" style={{ color: getScoreColor(liveScore) }}>{liveScore}</span>
                     <span className="score-label-pct">Rating</span>
                   </div>
                 </div>
 
                 <div style={{ marginTop: '0.5rem' }}>
                   <h4 style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '0.25rem' }}>
-                    {scanResult.score >= 90 ? (lang === 'en' ? 'Excellent' : 'अति उत्तम') :
-                     scanResult.score >= 60 ? (lang === 'en' ? 'Medium Risk' : 'मध्यम जोखिम') :
+                    {liveScore >= 90 ? (lang === 'en' ? 'Excellent' : 'अति उत्तम') :
+                     liveScore >= 60 ? (lang === 'en' ? 'Medium Risk' : 'मध्यम जोखिम') :
                      (lang === 'en' ? 'Critical Risk' : 'गंभीर जोखिम')}
                   </h4>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -1059,6 +1192,18 @@ export default function App() {
                       ? 'Continuous security reinforcement advised.' 
                       : 'सतत सुरक्षा सुदृढ़ीकरण की सलाह दी जाती है।'}
                   </p>
+                  
+                  {/* Access Restricted Tag for Insecure target + Block success */}
+                  {scanResult.target === 'demo-target-insecure' && !blockedSuccess['ssl_invalid'] && (
+                    <div className="badge-common" style={{ background: 'var(--severity-critical-bg)', color: 'var(--severity-critical)', border: '1px solid var(--severity-critical-border)', marginTop: '1.25rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                      ⚠️ {lang === 'en' ? 'Exposed Traffic' : 'ट्रैफ़िक खुला है'}
+                    </div>
+                  )}
+                  {blockedSuccess['ssl_invalid'] && (
+                    <div className="badge-common" style={{ background: 'var(--severity-block-bg)', color: '#f87171', border: '1px solid var(--severity-block-border)', marginTop: '1.25rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem', animation: 'pulseBorder 2.5s infinite' }}>
+                      🛑 {lang === 'en' ? 'Access Restricted' : 'एक्सेस प्रतिबंधित है'}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1102,6 +1247,9 @@ export default function App() {
                           <div 
                             key={issue.id} 
                             className="glass-panel issue-card"
+                            style={{
+                              borderColor: isFixed || isBlocked ? 'var(--severity-secure-border)' : 'rgba(255, 255, 255, 0.08)'
+                            }}
                           >
                             <div className="issue-header" onClick={() => toggleExpandIssue(issue.id)}>
                               <div className="issue-title-group">
@@ -1116,9 +1264,9 @@ export default function App() {
                                 )}
                                 <div>
                                   <h4 style={{ 
-                                    textDecoration: (isFixed || isBlocked) ? 'line-through' : 'none', 
-                                    color: (isFixed || isBlocked) ? 'var(--text-muted)' : 'var(--text-primary)',
-                                    fontSize: '0.95rem'
+                                    color: (isFixed || isBlocked) ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                    fontSize: '0.95rem',
+                                    fontWeight: 600
                                   }}>
                                     {lang === 'en' ? issue.title : issue.title_hi}
                                   </h4>
@@ -1126,22 +1274,40 @@ export default function App() {
                               </div>
                               <div className="issue-badges">
                                 {/* Severity Badge */}
-                                <span className={`badge-common ${getSeverityBadgeClass(issue.severity)}`}>
-                                  {lang === 'en' ? issue.severity : (
-                                    issue.severity === 'Critical' ? 'अति गंभीर' :
-                                    issue.severity === 'High' ? 'गंभीर' :
-                                    issue.severity === 'Medium' ? 'मध्यम' : 'निम्न'
-                                  )}
-                                </span>
+                                {!isFixed && !isBlocked && (
+                                  <span className="badge-common" style={getSeverityBadgeStyle(issue.severity)}>
+                                    {lang === 'en' ? issue.severity : (
+                                      issue.severity === 'Critical' ? 'अति गंभीर' :
+                                      issue.severity === 'High' ? 'गंभीर' :
+                                      issue.severity === 'Medium' ? 'मध्यम' : 'निम्न'
+                                    )}
+                                  </span>
+                                )}
 
-                                {/* Agent Action Type Badge */}
-                                <span className={`badge-common ${getActionBadgeClass(issue.agent_decision.action)}`}>
-                                  {issue.agent_decision.action === 'AUTO_FIX' && <Wrench size={12} />}
-                                  {issue.agent_decision.action === 'AUTO_BLOCK' && <ShieldAlert size={12} />}
-                                  {issue.agent_decision.action === 'GUIDE' && <BookOpen size={12} />}
-                                  {lang === 'en' ? issue.agent_decision.action : (
-                                    issue.agent_decision.action === 'AUTO_FIX' ? 'ऑटो-फिक्स' :
-                                    issue.agent_decision.action === 'AUTO_BLOCK' ? 'ऑटो-ब्लॉक' : 'मैन्युअल गाइड'
+                                {/* Agent Action Type / Fixed Badge */}
+                                <span className="badge-common" style={getActionBadgeStyle(issue.agent_decision.action, isFixed, isBlocked)}>
+                                  {isFixed && (
+                                    <>
+                                      <Check size={12} />
+                                      <span>{lang === 'en' ? 'FIXED' : 'ठीक हो गया'}</span>
+                                    </>
+                                  )}
+                                  {isBlocked && (
+                                    <>
+                                      <ShieldCheck size={12} />
+                                      <span>{lang === 'en' ? 'BLOCKED' : 'ब्लॉक हो गया'}</span>
+                                    </>
+                                  )}
+                                  {!isFixed && !isBlocked && (
+                                    <>
+                                      {issue.agent_decision.action === 'AUTO_FIX' && <Wrench size={12} />}
+                                      {issue.agent_decision.action === 'AUTO_BLOCK' && <ShieldAlert size={12} />}
+                                      {issue.agent_decision.action === 'GUIDE' && <BookOpen size={12} />}
+                                      {lang === 'en' ? issue.agent_decision.action : (
+                                        issue.agent_decision.action === 'AUTO_FIX' ? 'ऑटो-फिक्स' :
+                                        issue.agent_decision.action === 'AUTO_BLOCK' ? 'ऑटो-ब्लॉक' : 'मैन्युअल गाइड'
+                                      )}
+                                    </>
                                   )}
                                 </span>
                                 
@@ -1155,6 +1321,22 @@ export default function App() {
                                 <p className="issue-desc">
                                   {lang === 'en' ? issue.explanation_en : issue.explanation_hi}
                                 </p>
+
+                                {/* Fixed Confirmation Line */}
+                                {isFixed && (
+                                  <div className="badge-common btn-success-state animate-fade-in" style={{ width: '100%', borderRadius: '8px' }}>
+                                    <CheckCircle2 size={16} />
+                                    <span>{t.fixSuccess}</span>
+                                  </div>
+                                )}
+
+                                {/* Blocked Confirmation Line */}
+                                {isBlocked && (
+                                  <div className="badge-common animate-fade-in" style={{ background: 'var(--severity-block-bg)', color: '#fca5a5', border: '1px solid var(--severity-block-border)', width: '100%', borderRadius: '8px', padding: '0.5rem 1rem' }}>
+                                    <ShieldCheck size={16} />
+                                    <span>{t.blockSuccess}</span>
+                                  </div>
+                                )}
 
                                 {/* AI Reasoning Block */}
                                 <div className="ai-reasoning-card">
@@ -1179,67 +1361,49 @@ export default function App() {
 
                                 {/* Agent Action triggers */}
                                 <div style={{ marginTop: '0.5rem' }}>
-                                  {issue.agent_decision.action === 'AUTO_FIX' && (
-                                    <>
-                                      {isFixed ? (
-                                        <div className="badge-common btn-success-state" style={{ padding: '0.5rem 1rem' }}>
-                                          <CheckCircle2 size={16} />
-                                          <span>{t.fixSuccess}</span>
-                                        </div>
+                                  {issue.agent_decision.action === 'AUTO_FIX' && !isFixed && (
+                                    <button 
+                                      className="action-btn-trigger btn-trigger-fix"
+                                      onClick={() => runAutoFix(issue.id)}
+                                      disabled={fixingIssueId === issue.id}
+                                    >
+                                      {fixingIssueId === issue.id ? (
+                                        <>
+                                          <RefreshCw className="animate-spin" size={16} />
+                                          <span>{t.fixing}</span>
+                                        </>
                                       ) : (
-                                        <button 
-                                          className="action-btn-trigger btn-trigger-fix"
-                                          onClick={() => runAutoFix(issue.id)}
-                                          disabled={fixingIssueId === issue.id}
-                                        >
-                                          {fixingIssueId === issue.id ? (
-                                            <>
-                                              <RefreshCw className="animate-spin" size={16} />
-                                              <span>{t.fixing}</span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Wrench size={16} />
-                                              <span>{t.fixBtn}</span>
-                                            </>
-                                          )}
-                                        </button>
+                                        <>
+                                          <Wrench size={16} />
+                                          <span>{t.fixBtn}</span>
+                                        </>
                                       )}
-                                    </>
+                                    </button>
                                   )}
 
-                                  {issue.agent_decision.action === 'AUTO_BLOCK' && (
-                                    <>
-                                      {isBlocked ? (
-                                        <div className="badge-common btn-success-state" style={{ padding: '0.5rem 1rem' }}>
-                                          <CheckCircle2 size={16} />
-                                          <span>{t.blockSuccess}</span>
-                                        </div>
+                                  {issue.agent_decision.action === 'AUTO_BLOCK' && !isBlocked && (
+                                    <button 
+                                      className="action-btn-trigger btn-trigger-block"
+                                      onClick={() => runAutoBlock(issue.id)}
+                                      disabled={blockingIssueId === issue.id}
+                                    >
+                                      {blockingIssueId === issue.id ? (
+                                        <>
+                                          <RefreshCw className="animate-spin" size={16} />
+                                          <span>{t.blocking}</span>
+                                        </>
                                       ) : (
-                                        <button 
-                                          className="action-btn-trigger btn-trigger-block"
-                                          onClick={() => runAutoBlock(issue.id)}
-                                          disabled={blockingIssueId === issue.id}
-                                        >
-                                          {blockingIssueId === issue.id ? (
-                                            <>
-                                              <RefreshCw className="animate-spin" size={16} />
-                                              <span>{t.blocking}</span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <ShieldAlert size={16} />
-                                              <span>{t.blockBtn}</span>
-                                            </>
-                                          )}
-                                        </button>
+                                        <>
+                                          <ShieldAlert size={16} />
+                                          <span>{t.blockBtn}</span>
+                                        </>
                                       )}
-                                    </>
+                                    </button>
                                   )}
 
                                   {/* Terminal logging feedback */}
                                   {(fixingIssueId === issue.id || blockingIssueId === issue.id) && (
-                                    <div className="terminal-box">
+                                    <div className="terminal-box animate-fade-in">
                                       <div className="terminal-header">
                                         <div className="terminal-dot" style={{ background: '#ef4444' }}></div>
                                         <div className="terminal-dot" style={{ background: '#eab308' }}></div>
@@ -1288,7 +1452,7 @@ export default function App() {
                       <tbody>
                         {[
                           { id: 'emp_1', name: 'Avadhi Sharma', role: 'DevOps Engineer' },
-                          { id: 'emp_2', name: 'Lipi Patel', role: 'Full Stack Developer' },
+                          { id: 'emp_2', name: 'Lipi Tak', role: 'Full Stack Developer' },
                           { id: 'emp_3', name: 'Shagun Gupta', role: 'Technical Content Editor' }
                         ].map(emp => {
                           const isRevoked = !!offboardedEmployees[emp.id];
@@ -1360,7 +1524,7 @@ export default function App() {
         marginTop: 'auto', 
         padding: '2rem 0', 
         borderTop: '1px solid var(--border-color)',
-        background: 'rgba(5, 8, 16, 0.5)',
+        background: 'rgba(15, 23, 42, 0.9)',
         textAlign: 'center',
         fontSize: '0.825rem',
         color: 'var(--text-muted)'

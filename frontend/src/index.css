@@ -5,41 +5,45 @@
   --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
 
   /* Colors - Dark Theme Harmony */
-  --bg-primary: #080c14;
-  --bg-secondary: #0f1626;
-  --bg-card: rgba(17, 24, 39, 0.7);
-  --bg-card-hover: rgba(22, 32, 53, 0.85);
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: rgba(15, 23, 42, 0.75);
+  --bg-card-hover: rgba(30, 41, 59, 0.85);
   
   --border-color: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(99, 102, 241, 0.2);
+  --border-glow: rgba(99, 102, 241, 0.3);
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
   --color-primary: #6366f1; /* Indigo */
-  --color-primary-glow: rgba(99, 102, 241, 0.15);
+  --color-primary-glow: rgba(99, 102, 241, 0.2);
   
-  /* Severity Colors */
-  --severity-critical: #ef4444; /* Red */
-  --severity-critical-bg: rgba(239, 68, 68, 0.1);
-  --severity-critical-border: rgba(239, 68, 68, 0.25);
+  /* Severity Colors - Saturated & High Contrast */
+  --severity-critical: #ef4444; /* Vibrant Red */
+  --severity-critical-bg: rgba(239, 68, 68, 0.15);
+  --severity-critical-border: rgba(239, 68, 68, 0.4);
   
-  --severity-high: #f97316; /* Orange */
-  --severity-high-bg: rgba(249, 115, 22, 0.1);
-  --severity-high-border: rgba(249, 115, 22, 0.25);
+  --severity-high: #f97316; /* Vibrant Orange */
+  --severity-high-bg: rgba(249, 115, 22, 0.15);
+  --severity-high-border: rgba(249, 115, 22, 0.4);
 
-  --severity-medium: #eab308; /* Yellow */
-  --severity-medium-bg: rgba(234, 179, 8, 0.1);
-  --severity-medium-border: rgba(234, 179, 8, 0.25);
+  --severity-medium: #eab308; /* Vibrant Yellow */
+  --severity-medium-bg: rgba(234, 179, 8, 0.15);
+  --severity-medium-border: rgba(234, 179, 8, 0.4);
 
-  --severity-low: #3b82f6; /* Blue */
-  --severity-low-bg: rgba(59, 130, 246, 0.1);
-  --severity-low-border: rgba(59, 130, 246, 0.25);
+  --severity-low: #3b82f6; /* Vibrant Blue */
+  --severity-low-bg: rgba(59, 130, 246, 0.15);
+  --severity-low-border: rgba(59, 130, 246, 0.4);
 
-  --severity-secure: #22c55e; /* Green */
-  --severity-secure-bg: rgba(34, 197, 94, 0.1);
-  --severity-secure-border: rgba(34, 197, 94, 0.25);
+  --severity-secure: #10b981; /* Emerald Green */
+  --severity-secure-bg: rgba(16, 185, 129, 0.15);
+  --severity-secure-border: rgba(16, 185, 129, 0.4);
+
+  --severity-block: #dc2626; /* Deep Red */
+  --severity-block-bg: rgba(220, 38, 38, 0.15);
+  --severity-block-border: rgba(220, 38, 38, 0.4);
 
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -51,7 +55,7 @@
 }
 
 body {
-  background-color: var(--bg-primary);
+  background-color: #0f172a;
   color: var(--text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -59,8 +63,8 @@ body {
   overflow-x: hidden;
   min-height: 100vh;
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
+    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   background-attachment: fixed;
 }
 
@@ -112,16 +116,18 @@ body {
 /* Custom Glassmorphism Classes */
 .glass-panel {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: var(--transition-smooth);
 }
 
 .glass-panel:hover {
   background: var(--bg-card-hover);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.1);
 }
 
 .glass-panel-accent {

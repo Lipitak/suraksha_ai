@@ -162,6 +162,72 @@ def demo_target():
     
     return response
 
+@app.route("/api/demo-target-insecure", methods=["GET"])
+def demo_target_insecure():
+    html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Insecure Portal - SSL Missing</title>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background: #450a0a;
+                color: #fef2f2;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+            }
+            .card {
+                background: #7f1d1d;
+                border: 1px solid #b91c1c;
+                padding: 2.5rem;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+                max-width: 500px;
+                text-align: center;
+            }
+            h1 {
+                color: #fca5a5;
+                margin-top: 0;
+            }
+            p {
+                color: #fecaca;
+                line-height: 1.6;
+            }
+            .badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.875rem;
+                font-weight: 600;
+                margin-top: 1rem;
+                background: #ef4444;
+                color: white;
+                border: 1px solid #f87171;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>🛑 Insecure Sandbox Target</h1>
+            <p><strong>DANGER:</strong> This website is serving data without an active SSL/TLS configuration. All user inputs, forms, and session credentials are exposed in plain-text.</p>
+            <p>Scan this target on the SuRaksha AI dashboard to see how the autonomous agent handles critical missing certificate threats using the AUTO_BLOCK action layer.</p>
+            <span class="badge">SECURITY STATE: UNENCRYPTED</span>
+        </div>
+    </body>
+    </html>
+    """
+    response = make_response(html)
+    response.headers["Server"] = "Apache/2.4.41 (Ubuntu) Insecure"
+    # Note: no security headers sent at all!
+    return response
+
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     app.run(host="0.0.0.0", port=port, debug=True)

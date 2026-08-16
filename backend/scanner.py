@@ -113,21 +113,32 @@ def scan_url(url_input):
     if not raw_input:
         raise ValueError("URL cannot be empty")
         
-    is_demo = "demo-target" in raw_input.lower() or "localhost:5005/api/demo-target" in raw_input.lower() or "localhost:5000/api/demo-target" in raw_input.lower()
+    raw_input_lower = raw_input.lower()
+    is_insecure_demo = "demo-target-insecure" in raw_input_lower
+    is_demo = "demo-target" in raw_input_lower or "localhost:5005/api/demo-target" in raw_input_lower or "localhost:5000/api/demo-target" in raw_input_lower
     
-    if is_demo:
+    if is_demo or is_insecure_demo:
         # Load state
         state = get_state()
         is_fixed = state.get("demo_target_fixed", False)
         fixed_headers = state.get("fixed_headers", [])
         
-        target = "demo-target"
+        target = "demo-target-insecure" if is_insecure_demo else "demo-target"
         scanned_at = datetime.datetime.utcnow().isoformat() + "Z"
         
         # Prepare issues
         issues = []
         score = 100
         
+        # In insecure demo, SSL is missing (Critical: -35)
+        if is_insecure_demo:
+            issues.append({
+                "id": "ssl_invalid",
+                "severity": "Critical",
+                "auto_fixable": False
+            })
+            score -= 35
+            
         # Missing HSTS (High: -20)
         if "header_hsts_missing" not in fixed_headers and not is_fixed:
             issues.append({
@@ -181,10 +192,10 @@ def scan_url(url_input):
             "total_issues": len(issues),
             "issues": issues,
             "ssl_info": {
-                "valid": True,
-                "reason": "Valid",
-                "days_remaining": 245,
-                "issuer": "SuRaksha Demo CA"
+                "valid": False if is_insecure_demo else True,
+                "reason": "Missing or Expired Certificate" if is_insecure_demo else "Valid",
+                "days_remaining": 0 if is_insecure_demo else 245,
+                "issuer": None if is_insecure_demo else "SuRaksha Demo CA"
             }
         }
 
