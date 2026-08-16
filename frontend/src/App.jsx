@@ -254,7 +254,7 @@ export default function App() {
   // Translations
   const t = {
     en: {
-      appName: "SuRaksha AI",
+      appName: "Secure360",
       teamTag: "Team: Bheem Ki Shakti | SIH 2026",
       subtitle: "Approachable Cybersecurity for Small Businesses",
       desc: "Scan your website to find security gaps. Our automated assistant applies safe configuration fixes, alerts you on risks, and guides you in plain English and Hindi.",
@@ -309,7 +309,7 @@ export default function App() {
       externalBanner: "🔒 This is an external site — showing safe guidance only. In production, verifying domain ownership (via DNS record or file upload) would unlock Auto-Fix for this domain."
     },
     hi: {
-      appName: "सुरक्षा AI",
+      appName: "Secure360",
       teamTag: "टीम: भीम की शक्ति | SIH 2026",
       subtitle: "छोटे व्यवसायों के लिए सुलभ साइबर सुरक्षा",
       desc: "सुरक्षा खामियों को पहचानने के लिए वेबसाइट URL दर्ज करें। हमारा स्वचालित सहायक सुरक्षित कॉन्फ़िगरेशन सुधार लागू करता है, जोखिमों के बारे में चेतावनी देता है, और सरल हिंदी व अंग्रेजी में आपका मार्गदर्शन करता है।",
@@ -946,7 +946,27 @@ export default function App() {
       <header className="header-bar">
         <div className="container header-container">
           <div className="logo-section">
-            <Shield className="animate-pulse" style={{ color: '#4f46e5' }} size={28} />
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+              {/* Tilted 360-degree Orbit Arc (light indigo) */}
+              <path 
+                d="M 3.5 14 A 9 4.5 30 1 0 22.5 10.5" 
+                stroke="#a5b4fc" 
+                strokeWidth="1.8" 
+                strokeLinecap="round" 
+                fill="none"
+              />
+              {/* Shield in the center (brand indigo) */}
+              <path 
+                d="M12 21s7.5-3.8 7.5-9.5V5.5L12 2.5 4.5 5.5v6c0 5.7 7.5 9.5 7.5 9.5z" 
+                fill="rgba(79, 70, 229, 0.06)" 
+                stroke="#4F46E5" 
+                strokeWidth="2.2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+              />
+              {/* Orbiting Satellite Node */}
+              <circle cx="21" cy="9.5" r="2" fill="#4F46E5" />
+            </svg>
             <div>
               <span className="logo-text">{t.appName}</span>
               <span className="logo-badge" style={{ marginLeft: '0.5rem' }}>BETA</span>
@@ -1502,7 +1522,7 @@ export default function App() {
         boxShadow: '0 -1px 3px rgba(0,0,0,0.02)'
       }}>
         <div className="container">
-          <p>© 2026 SuRaksha AI. Developed for Smart India Hackathon 2026.</p>
+          <p>© 2026 Secure360. Developed for Smart India Hackathon 2026.</p>
           <p style={{ marginTop: '0.25rem' }}>Problem Statement S18 | Team Bheem Ki Shakti (Lipi, Avadhi, Shagun, Keertika)</p>
         </div>
       </footer>

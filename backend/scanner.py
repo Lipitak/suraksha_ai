@@ -32,7 +32,7 @@ def check_ssl(hostname):
             "valid": True,
             "reason": "Valid",
             "days_remaining": 245,
-            "issuer": "SuRaksha Demo CA"
+            "issuer": "Secure360 Demo CA"
         }
         
     context = ssl.create_default_context()
@@ -195,7 +195,7 @@ def scan_url(url_input):
                 "valid": False if is_insecure_demo else True,
                 "reason": "Missing or Expired Certificate" if is_insecure_demo else "Valid",
                 "days_remaining": 0 if is_insecure_demo else 245,
-                "issuer": None if is_insecure_demo else "SuRaksha Demo CA"
+                "issuer": None if is_insecure_demo else "Secure360 Demo CA"
             }
         }
 
@@ -237,7 +237,7 @@ def scan_url(url_input):
     try:
         # Perform request with timeout
         # Using verify=False because we already checked SSL separately and want to get headers even if SSL is bad
-        response = requests.get(url, timeout=5, verify=False, headers={"User-Agent": "SuRakshaAI-Scanner/1.0"})
+        response = requests.get(url, timeout=5, verify=False, headers={"User-Agent": "Secure360-Scanner/1.0"})
         headers = response.headers
         
         # Check HSTS

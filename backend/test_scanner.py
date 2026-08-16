@@ -8,7 +8,7 @@ from scanner import scan_url
 from ai_agent import enrich_issues, simulate_auto_fix, reset_demo_state
 
 def run_tests():
-    print("=== Testing SuRaksha AI Scanner Core ===")
+    print("=== Testing Secure360 Scanner Core ===")
     
     # 1. Reset state
     print("Resetting state...")

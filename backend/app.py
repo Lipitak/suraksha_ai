@@ -129,7 +129,7 @@ def demo_target():
         <div class="card">
             <h1>Demo Target Business Portal</h1>
             <p>This is a controlled sandbox environment representing a typical small business website without proper web server security hardening.</p>
-            <p>Use the SuRaksha AI dashboard to scan this url and deploy the agent's automated security fixes.</p>
+            <p>Use the Secure360 dashboard to scan this url and deploy the agent's automated security fixes.</p>
             {status_badge}
         </div>
     </body>
@@ -137,7 +137,7 @@ def demo_target():
     """
     
     if is_fixed:
-        status_badge = '<span class="badge badge-secure">Status: HARDENED BY SURAKSHA AI</span>'
+        status_badge = '<span class="badge badge-secure">Status: HARDENED BY SECURE360</span>'
     elif len(fixed_headers) > 0:
         status_badge = f'<span class="badge badge-vuln">Status: PARTIALLY SECURED ({len(fixed_headers)}/4 fixes applied)</span>'
     else:
@@ -158,7 +158,7 @@ def demo_target():
     if "header_xcontent_missing" in fixed_headers or is_fixed:
         response.headers["X-Content-Type-Options"] = "nosniff"
         
-    response.headers["Server"] = "SuRakshaAI-DemoSecureServer" if (is_fixed or len(fixed_headers) > 0) else "Apache/2.4.41 (Ubuntu)"
+    response.headers["Server"] = "Secure360-DemoSecureServer" if (is_fixed or len(fixed_headers) > 0) else "Apache/2.4.41 (Ubuntu)"
     
     return response
 
@@ -217,7 +217,7 @@ def demo_target_insecure():
         <div class="card">
             <h1>🛑 Insecure Sandbox Target</h1>
             <p><strong>DANGER:</strong> This website is serving data without an active SSL/TLS configuration. All user inputs, forms, and session credentials are exposed in plain-text.</p>
-            <p>Scan this target on the SuRaksha AI dashboard to see how the autonomous agent handles critical missing certificate threats using the AUTO_BLOCK action layer.</p>
+            <p>Scan this target on the Secure360 dashboard to see how the autonomous agent handles critical missing certificate threats using the AUTO_BLOCK action layer.</p>
             <span class="badge">SECURITY STATE: UNENCRYPTED</span>
         </div>
     </body>
